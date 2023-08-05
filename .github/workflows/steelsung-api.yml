@@ -34,7 +34,6 @@ jobs:
 
       - name: Upload Artifact
         uses: actions/upload-artifact@master
-
         with:
           name: steelsung-api-artifact
           path: steelsung-api-1.jar
@@ -56,5 +55,5 @@ jobs:
          SERVER: ${{ secrets.SERVER}}
         run: |
           sudo sshpass  -p ${SSHPASS}   -v  ssh -o StrictHostKeyChecking=no root@${SERVER} 'systemctl stop steelsung.api.service'
-          sudo sshpass  -p ${SSHPASS}   -v  ssh -o StrictHostKeyChecking=no root@${SERVER} 'cp steelsung-api-1.jar /home/neon/steelsung-api/steelsung-api-1.jar'
+          sudo sshpass -p ${SSHPASS} scp -v  -o stricthostkeychecking=no steelsung-api-1.jar root@${SERVER}:/home/neon/steelsung-api/steelsung-api-1.jar
           sudo sshpass  -p ${SSHPASS}   -v  ssh -o StrictHostKeyChecking=no root@${SERVER} 'systemctl start steelsung.api.service'
