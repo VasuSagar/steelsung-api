@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/**'
       - '.github/workflows/steelsung-api.yml'
+      - 'pom.xml'
 
 jobs:
   project-build:
