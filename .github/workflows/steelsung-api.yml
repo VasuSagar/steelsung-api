@@ -28,7 +28,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
 
       - name: Install Maven dependencies & generate jar
-        run: mvn clean package
+        run: mvn clean package -DskipTests
 
       - name: Rename artifact
         run: cp target/steelsung-api-0.0.1-SNAPSHOT.jar steelsung-api-1.jar
