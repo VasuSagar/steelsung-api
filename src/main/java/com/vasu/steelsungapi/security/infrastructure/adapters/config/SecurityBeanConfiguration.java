@@ -24,7 +24,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityBeanConfiguration {
     private final CustomUserDetailsService customUserDetailsService;
-    //private final AuthenticationProvider authenticationProvider;
     private final JwtAuthenticationFilter jwtAuthFilter;
 
     @Bean
@@ -61,7 +60,7 @@ public class SecurityBeanConfiguration {
         http.csrf(httpSecurityCsrfConfigurer -> httpSecurityCsrfConfigurer.disable()).authorizeHttpRequests(authorize-> {
                     try {
                         authorize
-                                .requestMatchers("/api/v1/auth/**","/swagger-ui/**","/swagger-ui.html","/v3/api-docs/**")
+                                .requestMatchers("/api/v1/auth/**","/swagger-ui/**","/swagger-ui.html","/v3/api-docs/**","/v3/api-docs.yaml")
                                 .permitAll()
                                         .anyRequest()
                                         .authenticated()
