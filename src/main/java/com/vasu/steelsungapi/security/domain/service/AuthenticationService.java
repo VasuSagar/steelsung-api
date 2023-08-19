@@ -2,6 +2,7 @@ package com.vasu.steelsungapi.security.domain.service;
 
 import com.vasu.steelsungapi.security.application.ports.input.RegisterUserUseCase;
 import com.vasu.steelsungapi.security.domain.model.AuthenticationResponse;
+import com.vasu.steelsungapi.security.domain.model.LoginRequest;
 import com.vasu.steelsungapi.security.domain.model.RegisterUserRequest;
 import com.vasu.steelsungapi.security.infrastructure.adapters.output.persistence.RegisterPersistenceAdapter;
 import lombok.AllArgsConstructor;
@@ -13,5 +14,10 @@ public class AuthenticationService implements RegisterUserUseCase {
     @Override
     public void registerUser(RegisterUserRequest registerUserRequest) {
         registerPersistenceAdapter.registerUser(registerUserRequest);
+    }
+
+    @Override
+    public AuthenticationResponse loginUser(LoginRequest loginRequest) {
+       return registerPersistenceAdapter.loginUser(loginRequest);
     }
 }

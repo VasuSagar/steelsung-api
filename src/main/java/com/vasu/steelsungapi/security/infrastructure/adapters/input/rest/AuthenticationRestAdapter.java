@@ -1,6 +1,8 @@
 package com.vasu.steelsungapi.security.infrastructure.adapters.input.rest;
 
 import com.vasu.steelsungapi.security.application.ports.input.RegisterUserUseCase;
+import com.vasu.steelsungapi.security.domain.model.AuthenticationResponse;
+import com.vasu.steelsungapi.security.domain.model.LoginRequest;
 import com.vasu.steelsungapi.security.domain.model.RegisterUserRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,5 +21,10 @@ public class AuthenticationRestAdapter {
     public ResponseEntity registerUser(@Valid @RequestBody RegisterUserRequest registerUserRequest){
         registerUserUseCase.registerUser(registerUserRequest);
         return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthenticationResponse> login(@Valid @RequestBody LoginRequest loginRequest){
+        return new ResponseEntity<>(registerUserUseCase.loginUser(loginRequest),HttpStatus.OK);
     }
 }
