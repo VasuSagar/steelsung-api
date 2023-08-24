@@ -1,5 +1,6 @@
 package com.vasu.steelsungapi.security.infrastructure.adapters.config;
 
+import com.vasu.steelsungapi.player.infrastructure.adapters.output.persistence.repository.PlayerStateRepository;
 import com.vasu.steelsungapi.security.domain.service.AuthenticationService;
 import com.vasu.steelsungapi.security.infrastructure.adapters.output.persistence.CustomUserDetailsService;
 import com.vasu.steelsungapi.security.infrastructure.adapters.output.persistence.JwtAuthenticationFilter;
@@ -46,8 +47,8 @@ public class SecurityBeanConfiguration {
     }
 
     @Bean
-    public RegisterPersistenceAdapter registerPersistenceAdapter(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService, AuthenticationManager authenticationManager) {
-        return new RegisterPersistenceAdapter(userRepository,passwordEncoder,jwtService,authenticationManager);
+    public RegisterPersistenceAdapter registerPersistenceAdapter(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService, AuthenticationManager authenticationManager, PlayerStateRepository playerStateRepository) {
+        return new RegisterPersistenceAdapter(userRepository,playerStateRepository,passwordEncoder,jwtService,authenticationManager);
     }
 
     @Bean

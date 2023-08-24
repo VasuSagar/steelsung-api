@@ -1,5 +1,7 @@
 package com.vasu.steelsungapi.security.infrastructure.adapters.output.persistence;
 
+import com.vasu.steelsungapi.player.infrastructure.adapters.output.persistence.entity.PlayerState;
+import com.vasu.steelsungapi.player.infrastructure.adapters.output.persistence.repository.PlayerStateRepository;
 import com.vasu.steelsungapi.security.application.ports.output.RegisterOutputPort;
 import com.vasu.steelsungapi.security.domain.model.AuthenticationResponse;
 import com.vasu.steelsungapi.security.domain.model.LoginRequest;
@@ -12,11 +14,14 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @AllArgsConstructor
 public class RegisterPersistenceAdapter implements RegisterOutputPort {
     private final UserRepository userRepository;
+    private final PlayerStateRepository playerStateRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -31,6 +36,8 @@ public class RegisterPersistenceAdapter implements RegisterOutputPort {
                 .password(passwordEncoder.encode(registerUserRequest.getPassword()))
                 .build();
         userRepository.save(user);
+        PlayerState playerState = PlayerState.builder().user(user).balanceAmount(Double.valueOf(0.00)).totalBetAmount(0L).experience(0L).level(0).build();
+        playerStateRepository.save(playerState);
     }
 
     @Override
@@ -41,5 +48,13 @@ public class RegisterPersistenceAdapter implements RegisterOutputPort {
         User player = userRepository.findByUsername(loginRequest.getUsername()).orElseThrow();
         String jwtToken = jwtService.generateToken(player);
         return AuthenticationResponse.builder().accessToken(jwtToken).build();
+    }
+
+    @Override
+    public User getLoggedInUser() {
+        org.springframework.security.core.userdetails.User principal = (org.springframework.security.core.userdetails.User) SecurityContextHolder.
+                getContext().getAuthentication().getPrincipal();
+        return userRepository.findByUsername(principal.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("Email name not found - " + principal.getUsername()));
     }
 }
