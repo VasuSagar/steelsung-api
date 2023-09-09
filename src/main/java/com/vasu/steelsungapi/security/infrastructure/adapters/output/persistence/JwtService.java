@@ -7,6 +7,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -24,8 +25,13 @@ public class JwtService {
     @Value("${application.security.jwt.expiration}")
     private long jwtExpiration;
 
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+    public String extractUsername(String token) throws Exception {
+        try{
+            return extractClaim(token, Claims::getSubject);
+        }
+        catch(Exception ex){
+            throw new AccessDeniedException("access denied");
+        }
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -51,7 +57,7 @@ public class JwtService {
                 .compact();
     }
 
-    public boolean isTokenValid(String token, UserDetails userDetails) {
+    public boolean isTokenValid(String token, UserDetails userDetails) throws Exception {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
@@ -75,5 +81,10 @@ public class JwtService {
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public String getUserNameFromJwtToken(String token) {
+        return Jwts.parserBuilder().setSigningKey(getSignInKey()).build()
+                .parseClaimsJws(token).getBody().getSubject();
     }
 }
