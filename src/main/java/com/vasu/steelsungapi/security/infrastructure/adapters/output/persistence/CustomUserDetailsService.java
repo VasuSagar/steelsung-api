@@ -30,6 +30,6 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     private Collection<? extends GrantedAuthority> assignTempRole() {
-        return Collections.singleton(new SimpleGrantedAuthority("admin"));
+        return Collections.singleton(new SimpleGrantedAuthority("ADMIN"));
     }
 }

@@ -57,4 +57,9 @@ public class RegisterPersistenceAdapter implements RegisterOutputPort {
         return userRepository.findByUsername(principal.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException("Email name not found - " + principal.getUsername()));
     }
+
+    public User getLoggedInUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Email name not found - " + username));
+    }
 }
