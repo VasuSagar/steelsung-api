@@ -10,9 +10,6 @@ import com.vasu.steelsungapi.security.infrastructure.adapters.output.persistence
 import com.vasu.steelsungapi.security.infrastructure.adapters.output.persistence.entity.User;
 import lombok.RequiredArgsConstructor;
 
-import java.text.DecimalFormat;
-import java.text.ParseException;
-
 @RequiredArgsConstructor
 public class BalancePersistenceAdapter implements BalanceOutputPort {
     private final PlayerStateRepository playerStateRepository;
@@ -26,16 +23,22 @@ public class BalancePersistenceAdapter implements BalanceOutputPort {
     }
 
     @Override
-    public GetBalanceResponse setBalance(SetBalanceRequest setBalanceRequest, User user) throws ParseException {
-        DecimalFormat df=new DecimalFormat("0.00");
-        String format = df.format(setBalanceRequest.getBalanceAmount());
-        Double roundedOffBalanceValue = (Double)df.parse(format) ;
+    public GetBalanceResponse setBalance(SetBalanceRequest setBalanceRequest, User user) {
+        double balanceRequestAmount=convertBalanceAmount(setBalanceRequest.getBalanceAmount());
         User loggedInUser = registerPersistenceAdapter.getLoggedInUser();
 
         PlayerState playerStateToUpdate = playerStateRepository.findById(loggedInUser.getId()).orElseThrow(()->new ResourceNotFoundException("Player","id",loggedInUser.getId()));
-        Double updatedBalanceAmount = playerStateToUpdate.getBalanceAmount() + roundedOffBalanceValue;
-        playerStateToUpdate.setBalanceAmount((Double)df.parse(df.format(updatedBalanceAmount)));
+        Double updatedBalanceAmount = playerStateToUpdate.getBalanceAmount() + balanceRequestAmount;
+        double convertedAmount = convertBalanceAmount(updatedBalanceAmount);
+        playerStateToUpdate.setBalanceAmount(convertedAmount);
         PlayerState savedPlayerState = playerStateRepository.save(playerStateToUpdate);
         return GetBalanceResponse.builder().balanceAmount(savedPlayerState.getBalanceAmount()).build();
     }
+
+    private double convertBalanceAmount(Double amount){
+        double val = amount*100;
+        val = (double)((int) val);
+        return val /100;
+    }
+
 }
