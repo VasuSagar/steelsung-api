@@ -20,4 +20,9 @@ public class CoinFlipGameDetails {
     private User user;
     private Double betAmount;
     private Integer creatorCoinSide;
+    private Integer participantCoinSide;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn()
+    private User participantUser;
 }

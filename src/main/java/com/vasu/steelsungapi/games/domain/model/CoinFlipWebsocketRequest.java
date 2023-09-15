@@ -13,4 +13,5 @@ import lombok.NoArgsConstructor;
 public class CoinFlipWebsocketRequest {
     CoinFlipGameRequestType coinFlipRequestType;
     CoinFlipMatchCreateWsRequest coinFlipMatchCreateWsRequest;
+    CoinFlipMatchJoinWsRequest coinFlipMatchJoinWsRequest;
 }
