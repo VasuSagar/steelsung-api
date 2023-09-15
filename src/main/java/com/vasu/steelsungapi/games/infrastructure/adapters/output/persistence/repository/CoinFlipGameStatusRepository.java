@@ -4,4 +4,5 @@ import com.vasu.steelsungapi.games.infrastructure.adapters.output.persistence.en
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CoinFlipGameStatusRepository extends JpaRepository<CoinFlipGameStatus,Long> {
+    CoinFlipGameStatus findByCoinFlipGameDetailsId(Long id);
 }
