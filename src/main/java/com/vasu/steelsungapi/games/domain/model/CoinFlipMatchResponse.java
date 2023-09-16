@@ -19,4 +19,5 @@ public class CoinFlipMatchResponse {
     private Long gameId;
     private Double matchBetAmount;
     private Integer creatorCoinSide;
+    private Double creatorUpdatedBalance;
 }

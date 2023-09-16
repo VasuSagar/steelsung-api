@@ -14,4 +14,5 @@ public class CoinFlipMatchJoinedResponse {
     private Long gameId;
     private Integer participantCoinSide;
     private Long participantJoinedId;
+    private Double participantUpdatedBalance;
 }

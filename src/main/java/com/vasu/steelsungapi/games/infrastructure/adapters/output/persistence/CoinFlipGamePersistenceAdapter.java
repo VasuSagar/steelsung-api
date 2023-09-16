@@ -34,7 +34,7 @@ public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
         PlayerState playerStateToUpdate = playerStateRepository.findById(loggedInUser.getId()).orElseThrow(() -> new ResourceNotFoundException("Player", "id", loggedInUser.getId()));
         double roundedOffBalanceValue = convertBalanceAmount(coinFlipMatchCreateWsRequest.getMatchBetAmount());
 
-        boolean isRequestInvalid = validateCoinFlipMatchCreateWsRequest(coinFlipMatchCreateWsRequest, playerStateToUpdate.getBalanceAmount());
+        boolean isRequestInvalid = validateCoinFlipMatchCreateWsRequest(coinFlipMatchCreateWsRequest, playerStateToUpdate.getBalanceAmount(),username);
         if (isRequestInvalid) {
             return;
         }
@@ -48,9 +48,9 @@ public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
         Double updatedBalanceAmount = playerStateToUpdate.getBalanceAmount() - roundedOffBalanceValue;
         //TODO: Does this require conversion to 2 floating point?
         playerStateToUpdate.setBalanceAmount(updatedBalanceAmount);
-        playerStateRepository.save(playerStateToUpdate);
+        PlayerState savedPlayerStateEntity = playerStateRepository.save(playerStateToUpdate);
 
-        CoinFlipMatchResponse response = CoinFlipMatchResponse.builder().gameCreatedAt(savedCoinFlipGameStatus.getGameCreatedAt()).gameCreaterId(savedCoinFlipGameStatus.getCoinFlipGameDetails().getUser().getId()).matchBetAmount(savedCoinFlipGameStatus.getCoinFlipGameDetails().getBetAmount()).gameId(savedCoinFlipGameStatus.getId()).gameCreaterUsername(savedCoinFlipGameStatus.getCoinFlipGameDetails().getUser().getUsername()).creatorCoinSide(coinFlipMatchCreateWsRequest.getCreatorCoinSide()).build();
+        CoinFlipMatchResponse response = CoinFlipMatchResponse.builder().gameCreatedAt(savedCoinFlipGameStatus.getGameCreatedAt()).gameCreaterId(savedCoinFlipGameStatus.getCoinFlipGameDetails().getUser().getId()).matchBetAmount(savedCoinFlipGameStatus.getCoinFlipGameDetails().getBetAmount()).gameId(savedCoinFlipGameStatus.getId()).gameCreaterUsername(savedCoinFlipGameStatus.getCoinFlipGameDetails().getUser().getUsername()).creatorCoinSide(coinFlipMatchCreateWsRequest.getCreatorCoinSide()).creatorUpdatedBalance(convertBalanceAmount(savedPlayerStateEntity.getBalanceAmount())).build();
         this.simpMessagingTemplate.convertAndSend("/topic/coinflip", response);
     }
 
@@ -58,7 +58,12 @@ public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
     @Transactional
     public void joinCoinFlipGame(CoinFlipMatchJoinWsRequest coinFlipMatchJoinWsRequest, String username) {
         User loggedInUser = registerPersistenceAdapter.getLoggedInUserByUsername(username);
-        CoinFlipGameDetails coinFlipGameDetails = coinFlipGameDetailsRepository.findById(coinFlipMatchJoinWsRequest.getMatchId()).orElseThrow(() -> new ResourceNotFoundException("Match id", "id", coinFlipMatchJoinWsRequest.getMatchId()));
+        CoinFlipGameDetails coinFlipGameDetails = coinFlipGameDetailsRepository.findById(coinFlipMatchJoinWsRequest.getMatchId())
+                .orElseThrow(()->{
+                    CoinFlipMatchErrorResponse coinFlipGameErrorEventResponse = CoinFlipMatchErrorResponse.builder().eventType(CoinFlipGameErrorEventResponse.COIN_FLIP_GAME_INVALID_MATCH_ID.ordinal()).errorMessage("Invalid match id").build();
+                    sendMessageToSpecificUser(username, coinFlipGameErrorEventResponse);
+                    throw new ResourceNotFoundException("match", "id", coinFlipMatchJoinWsRequest.getMatchId());
+                });
         boolean isRequestInvalid=validateCoinFlipMatchJoinWsRequest(coinFlipGameDetails,loggedInUser);
         if (isRequestInvalid) {
             return;
@@ -70,7 +75,7 @@ public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
         //subtract bet amount from joined player's balance
         Double updatedBalanceAmount = playerStateToUpdate.getBalanceAmount() - roundedOffBalanceValue;
         playerStateToUpdate.setBalanceAmount(updatedBalanceAmount);
-        playerStateRepository.save(playerStateToUpdate);
+        PlayerState savedPlayerStateEntity = playerStateRepository.save(playerStateToUpdate);
 
         //update game status
         CoinFlipGameStatus coinFlipGameStatus = coinFlipGameStatusRepository.findByCoinFlipGameDetailsId(coinFlipGameDetails.getId());
@@ -83,7 +88,7 @@ public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
         coinFlipGameDetails.setParticipantCoinSide(1-coinFlipGameDetails.getCreatorCoinSide());
         coinFlipGameDetailsRepository.save(coinFlipGameDetails);
 
-        CoinFlipMatchJoinedResponse response = CoinFlipMatchJoinedResponse.builder().participantJoinedAt(savedCoinFlipGameStatus.getGameParticipantJoinedAt()).participantJoinedId(savedCoinFlipGameStatus.getCoinFlipGameDetails().getParticipantUser().getId()).gameId(savedCoinFlipGameStatus.getId()).participantJoinedUsername(savedCoinFlipGameStatus.getCoinFlipGameDetails().getParticipantUser().getUsername()).participantCoinSide(savedCoinFlipGameStatus.getCoinFlipGameDetails().getParticipantCoinSide()).build();
+        CoinFlipMatchJoinedResponse response = CoinFlipMatchJoinedResponse.builder().participantJoinedAt(savedCoinFlipGameStatus.getGameParticipantJoinedAt()).participantJoinedId(savedCoinFlipGameStatus.getCoinFlipGameDetails().getParticipantUser().getId()).gameId(savedCoinFlipGameStatus.getId()).participantJoinedUsername(savedCoinFlipGameStatus.getCoinFlipGameDetails().getParticipantUser().getUsername()).participantCoinSide(savedCoinFlipGameStatus.getCoinFlipGameDetails().getParticipantCoinSide()).participantUpdatedBalance(convertBalanceAmount(savedPlayerStateEntity.getBalanceAmount())).build();
         this.simpMessagingTemplate.convertAndSend("/topic/coinflip", response);
     }
 
@@ -92,7 +97,7 @@ public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
         //check if joinedPlayer and matchCreator are not same
         if (coinFlipGameDetails.getUser().getId().equals(joinedPlayer.getId())) {
             CoinFlipMatchErrorResponse coinFlipGameErrorEventResponse = CoinFlipMatchErrorResponse.builder().eventType(CoinFlipGameErrorEventResponse.COIN_FLIP_GAME_SAME_PLAYER.ordinal()).errorMessage("Match creator and joined player are same").build();
-            this.simpMessagingTemplate.convertAndSend("/topic/coinflip", coinFlipGameErrorEventResponse);
+            sendMessageToSpecificUser(joinedPlayer.getUsername(), coinFlipGameErrorEventResponse);
             return true;
         }
 
@@ -100,14 +105,14 @@ public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
         CoinFlipGameStatus coinFlipGameStatus = coinFlipGameStatusRepository.findByCoinFlipGameDetailsId(coinFlipGameDetails.getId());
         if (coinFlipGameStatus.getGameStatus() == GameEventTypeResponse.COIN_FLIP_GAME_PARTICIPANT_JOINED.ordinal()) {
             CoinFlipMatchErrorResponse coinFlipGameErrorEventResponse = CoinFlipMatchErrorResponse.builder().eventType(CoinFlipGameErrorEventResponse.COIN_FLIP_GAME_ALREADY_JOINED.ordinal()).errorMessage("Match is already joined").build();
-            this.simpMessagingTemplate.convertAndSend("/topic/coinflip", coinFlipGameErrorEventResponse);
+            sendMessageToSpecificUser(joinedPlayer.getUsername(), coinFlipGameErrorEventResponse);
             return true;
         }
 
         //check if match is already finished
         if (coinFlipGameStatus.getGameStatus() == GameEventTypeResponse.COIN_FLIP_GAME_OVER.ordinal()) {
             CoinFlipMatchErrorResponse coinFlipGameErrorEventResponse = CoinFlipMatchErrorResponse.builder().eventType(CoinFlipGameErrorEventResponse.COIN_FLIP_GAME_ALREADY_FINISHED.ordinal()).errorMessage("Match is already finished").build();
-            this.simpMessagingTemplate.convertAndSend("/topic/coinflip", coinFlipGameErrorEventResponse);
+            sendMessageToSpecificUser(joinedPlayer.getUsername(), coinFlipGameErrorEventResponse);
             return true;
         }
 
@@ -115,35 +120,35 @@ public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
         PlayerState joinedPlayerStateEntity = playerStateRepository.findById(joinedPlayer.getId()).orElseThrow(() -> new ResourceNotFoundException("Player", "id", joinedPlayer.getId()));
         if (joinedPlayerStateEntity.getBalanceAmount() < coinFlipGameDetails.getBetAmount()) {
             CoinFlipMatchErrorResponse coinFlipGameErrorEventResponse = CoinFlipMatchErrorResponse.builder().eventType(CoinFlipGameErrorEventResponse.COIN_FLIP_GAME_LOW_BALANCE.ordinal()).errorMessage("Joined User's current balance is low than the bet amount").build();
-            this.simpMessagingTemplate.convertAndSend("/topic/coinflip", coinFlipGameErrorEventResponse);
+            sendMessageToSpecificUser(joinedPlayer.getUsername(), coinFlipGameErrorEventResponse);
             return true;
         }
         return false;
     }
 
     //TODO:Use Jakarta validation or alternative instead of user defined functions
-    private boolean validateCoinFlipMatchCreateWsRequest(CoinFlipMatchCreateWsRequest coinFlipMatchCreateWsRequest, Double currentBalanceAmount) {
-        return validateCoinSide(coinFlipMatchCreateWsRequest.getCreatorCoinSide()) || validateMatchBetAmount(coinFlipMatchCreateWsRequest.getMatchBetAmount(), currentBalanceAmount);
+    private boolean validateCoinFlipMatchCreateWsRequest(CoinFlipMatchCreateWsRequest coinFlipMatchCreateWsRequest, Double currentBalanceAmount, String username) {
+        return validateCoinSide(coinFlipMatchCreateWsRequest.getCreatorCoinSide(),username) || validateMatchBetAmount(coinFlipMatchCreateWsRequest.getMatchBetAmount(), currentBalanceAmount,username);
     }
 
-    private boolean validateMatchBetAmount(Double matchBetAmount, Double playerCurrentBalanceAmount) {
+    private boolean validateMatchBetAmount(Double matchBetAmount, Double playerCurrentBalanceAmount, String username) {
         if (playerCurrentBalanceAmount < matchBetAmount) {
             CoinFlipMatchErrorResponse coinFlipGameErrorEventResponse = CoinFlipMatchErrorResponse.builder().eventType(CoinFlipGameErrorEventResponse.COIN_FLIP_GAME_LOW_BALANCE.ordinal()).errorMessage("User's current balance is low than the bet amount").build();
-            this.simpMessagingTemplate.convertAndSend("/topic/coinflip", coinFlipGameErrorEventResponse);
+            sendMessageToSpecificUser(username, coinFlipGameErrorEventResponse);
             return true;
         }
         if (matchBetAmount <= 0.1 || matchBetAmount >= 1000) {
             CoinFlipMatchErrorResponse coinFlipGameErrorEventResponse = CoinFlipMatchErrorResponse.builder().eventType(CoinFlipGameErrorEventResponse.COIN_FLIP_GAME_INVALID_BET_AMOUNT.ordinal()).errorMessage("Bet amount should be between 0.1-1000").build();
-            this.simpMessagingTemplate.convertAndSend("/topic/coinflip", coinFlipGameErrorEventResponse);
+            sendMessageToSpecificUser(username, coinFlipGameErrorEventResponse);
             return true;
         }
         return false;
     }
 
-    private boolean validateCoinSide(Integer creatorCoinSide) {
+    private boolean validateCoinSide(Integer creatorCoinSide, String username) {
         if (creatorCoinSide >= 2 || creatorCoinSide < 0) {
             CoinFlipMatchErrorResponse coinFlipGameErrorEventResponse = CoinFlipMatchErrorResponse.builder().eventType(CoinFlipGameErrorEventResponse.COIN_FLIP_GAME_INVALID_COIN_SIDE.ordinal()).errorMessage("Coin side should be 0 or 1").build();
-            this.simpMessagingTemplate.convertAndSend("/topic/coinflip", coinFlipGameErrorEventResponse);
+            sendMessageToSpecificUser(username, coinFlipGameErrorEventResponse);
             return true;
         }
         return false;
@@ -154,4 +159,9 @@ public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
         val = (double) ((int) val);
         return val / 100;
     }
+
+    private void sendMessageToSpecificUser(String username, Object message) {
+        this.simpMessagingTemplate.convertAndSendToUser(username, "/queue/reply", message);
+    }
+
 }

@@ -12,6 +12,7 @@ public class ConfigureInboundAndOriginConfig extends AbstractSecurityWebSocketMe
         messages
                 .simpDestMatchers("/app/coinflip").hasAuthority("ADMIN")
                 .simpSubscribeDestMatchers("/topic/coinflip").permitAll()
+                .simpSubscribeDestMatchers("/user/**").hasAnyAuthority("ADMIN")
                 .simpTypeMatchers(SimpMessageType.CONNECT).permitAll()
                 .simpTypeMatchers(SimpMessageType.MESSAGE, SimpMessageType.SUBSCRIBE).denyAll()
                 .anyMessage().denyAll();
