@@ -24,9 +24,8 @@ public class GamesRestAdapter {
         CoinFlipWebsocketRequest coinFlipWebsocketRequest = mapper.readValue(message, CoinFlipWebsocketRequest.class);
         if (coinFlipWebsocketRequest.getCoinFlipRequestType() == CoinFlipGameRequestType.CREATE_COIN_FLIP_GAME) {
             createCoinFlipGameUseCase.createCoinFlipGame(coinFlipWebsocketRequest.getCoinFlipMatchCreateWsRequest(), principal.getName());
-        }
-        else if(coinFlipWebsocketRequest.getCoinFlipRequestType() == CoinFlipGameRequestType.JOIN_COIN_FLIP_GAME){
-            createCoinFlipGameUseCase.joinCoinFlipGame(coinFlipWebsocketRequest.getCoinFlipMatchJoinWsRequest(),principal.getName());
+        } else if (coinFlipWebsocketRequest.getCoinFlipRequestType() == CoinFlipGameRequestType.JOIN_COIN_FLIP_GAME) {
+            createCoinFlipGameUseCase.joinCoinFlipGame(coinFlipWebsocketRequest.getCoinFlipMatchJoinWsRequest(), principal.getName());
         }
     }
 }
