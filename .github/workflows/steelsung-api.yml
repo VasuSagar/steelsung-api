@@ -31,13 +31,13 @@ jobs:
         run: mvn clean package -DskipTests
 
       - name: Rename artifact
-        run: cp target/steelsung-api-0.0.1-SNAPSHOT.jar steelsung-api-1.jar
+        run: cp target/steelsung-api-0.0.1-SNAPSHOT.jar steelsung-api.jar
 
       - name: Upload Artifact
         uses: actions/upload-artifact@master
         with:
           name: steelsung-api-artifact
-          path: steelsung-api-1.jar
+          path: steelsung-api.jar
 
   deploy:
     if: ${{ github.ref == 'refs/heads/master' }}
@@ -55,6 +55,6 @@ jobs:
          SSHPASS: ${{ secrets.SSHPASS }}
          SERVER: ${{ secrets.SERVER}}
         run: |
-          sudo sshpass  -p ${SSHPASS}   -v  ssh -o StrictHostKeyChecking=no root@${SERVER} 'systemctl stop steelsung.api.service'
-          sudo sshpass -p ${SSHPASS} scp -v  -o stricthostkeychecking=no steelsung-api-1.jar root@${SERVER}:/home/neon/steelsung-api/steelsung-api-1.jar
-          sudo sshpass  -p ${SSHPASS}   -v  ssh -o StrictHostKeyChecking=no root@${SERVER} 'systemctl start steelsung.api.service'
+          sudo sshpass  -p ${SSHPASS}   -v  ssh -o StrictHostKeyChecking=no root@${SERVER} 'systemctl stop steelsung-api.service'
+          sudo sshpass -p ${SSHPASS} scp -v  -o stricthostkeychecking=no steelsung-api.jar root@${SERVER}:/home/api/steelsung-api.jar
+          sudo sshpass  -p ${SSHPASS}   -v  ssh -o StrictHostKeyChecking=no root@${SERVER} 'systemctl start steelsung-api.service'
