@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.Instant;
+import java.util.concurrent.ThreadLocalRandom;
 
 @RequiredArgsConstructor
 public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
@@ -90,6 +91,31 @@ public class CoinFlipGamePersistenceAdapter implements CoinFlipGamePublisher {
 
         CoinFlipMatchJoinedResponse response = CoinFlipMatchJoinedResponse.builder().participantJoinedAt(savedCoinFlipGameStatus.getGameParticipantJoinedAt()).participantJoinedId(savedCoinFlipGameStatus.getCoinFlipGameDetails().getParticipantUser().getId()).gameId(savedCoinFlipGameStatus.getId()).participantJoinedUsername(savedCoinFlipGameStatus.getCoinFlipGameDetails().getParticipantUser().getUsername()).participantCoinSide(savedCoinFlipGameStatus.getCoinFlipGameDetails().getParticipantCoinSide()).participantUpdatedBalance(convertBalanceAmount(savedPlayerStateEntity.getBalanceAmount())).build();
         this.simpMessagingTemplate.convertAndSend("/topic/coinflip", response);
+
+        //decide winner
+        Long winnerId = decideCoinFlipGameWinner(coinFlipGameDetails.getUser().getId(), loggedInUser.getId());
+        String winnerUsername=findWinnerUsername(winnerId,coinFlipGameDetails.getUser(),loggedInUser);
+
+        //update winner details and game details
+        savedCoinFlipGameStatus.setWinnerId(winnerId);
+        savedCoinFlipGameStatus.setGameStatus(GameEventTypeResponse.COIN_FLIP_GAME_OVER.ordinal());
+        savedCoinFlipGameStatus.setGameFinishedAt(Instant.now().toEpochMilli());
+        CoinFlipGameStatus savedCoinFlipGameStatusAfterWin = coinFlipGameStatusRepository.save(savedCoinFlipGameStatus);
+
+        PlayerState winnerPlayerState = playerStateRepository.findById(winnerId).orElseThrow(() -> new ResourceNotFoundException("Player", "id", winnerId));
+        winnerPlayerState.setBalanceAmount(winnerPlayerState.getBalanceAmount()+coinFlipGameDetails.getBetAmount()*2);
+        PlayerState savedPlayerStateAfterWin = playerStateRepository.save(winnerPlayerState);
+
+        CoinFlipMatchFinishedResponse coinFlipMatchFinishedResponse = CoinFlipMatchFinishedResponse.builder().gameFinishedAt(savedCoinFlipGameStatusAfterWin.getGameFinishedAt()).gameId(coinFlipMatchJoinWsRequest.getMatchId()).winnerUserName(winnerUsername).winnerUpdatedBalance(savedPlayerStateAfterWin.getBalanceAmount()).build();
+        this.simpMessagingTemplate.convertAndSend("/topic/coinflip", coinFlipMatchFinishedResponse);
+    }
+
+    private String findWinnerUsername(Long winnerId, User creatorUser, User participantUser) {
+        return winnerId==creatorUser.getId()?creatorUser.getUsername():participantUser.getUsername();
+    }
+
+    private Long decideCoinFlipGameWinner(Long creatorId, Long participantId){
+        return ThreadLocalRandom.current().nextInt(0, 1 + 1)==0?creatorId:participantId;
     }
 
     //TODO:Use Jakarta validation or alternative instead of user defined functions
